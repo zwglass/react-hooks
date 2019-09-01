@@ -1,4 +1,4 @@
-import React, { Fragment, Component } from 'react'
+import React, { Fragment, useState } from 'react'
 import './App.css'
 import Navbar from './components/layout/Navbar'
 import Alert from './components/layout/Alert'
@@ -9,98 +9,95 @@ import axios from 'axios'
 import { BrowserRouter, Switch, Route } from 'react-router-dom'
 import About from './components/pages/About'
 
-export default class App extends Component {
+import AlertState from './contexts/alert/alertState'
 
-  state = {
-    users: [],
-    user: {},
-    loading: false,
-    alert: null,
-    repos: []
-  }
+const App = () => {
 
-  async componentDidMount() {
-    // 获取本地环境变量值 .env.local 里面设置的值
-    // console.log(process.env.REACT_APP_GITHUB_CLIENT_ID);
-    // console.log(process.env.REACT_APP_GITHUB_CLIENT_SECRET);
-    this.setState({ loading: true });
-    const res = await axios.get(
-      `https://api.github.com/users?
-      client_id=${process.env.REACT_APP_GITHUB_CLIENT_ID}&
-      client_secret=${process.env.REACT_APP_GITHUB_CLIENT_SECRET}`
-    );
-    this.setState({ users: res.data, loading: false });
-  }
+  const [users, setUsers] = useState([]);
+  const [user, setUser] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [repos, setRepos] = useState([]);
 
-  searchUsers = async (text) => {
+  const searchUsers = async (text) => {
     /** 搜索用户 */
     if (!text) {
       return;
     }
-    this.setState({ loading: true });
+    setLoading(true);
     const res = await axios.get(
       `https://api.github.com/search/users?q=${text}&
       client_id=${process.env.REACT_APP_GITHUB_CLIENT_ID}&
       client_secret=${process.env.REACT_APP_GITHUB_CLIENT_SECRET}`
     );
-    this.setState({ users: res.data.items, loading: false });
+    setUsers(res.data.items);
+    setLoading(false);
   }
 
-  loadUser = async (login) => {
+  const loadUser = async (login) => {
     /** 获取单个用户信息 */
-    this.setState({ loading: true });
+    setLoading(true);
     const res = await axios.get(
       `https://api.github.com/users/${login}?
       client_id=${process.env.REACT_APP_GITHUB_CLIENT_ID}&
       client_secret=${process.env.REACT_APP_GITHUB_CLIENT_SECRET}`
     );
-    this.setState({ user: res.data, loading: false });
+    setLoading(false);
+    setUser(res.data);
   }
 
-  loadUserRepos = async (login) => {
+  const loadUserRepos = async (login) => {
     /** 获取当前用户的仓库信息 */
-    this.setState({ loading: true });
+    setLoading(true);
     const res = await axios.get(
       `https://api.github.com/users/${login}/repos?per_page=5&sort=created:asc&
       client_id=${process.env.REACT_APP_GITHUB_CLIENT_ID}&
       client_secret=${process.env.REACT_APP_GITHUB_CLIENT_SECRET}`
     );
-    console.log(res.data);
-    this.setState({ repos: res.data, loading: false });
+    setRepos(res.data);
+    setLoading(false);
   }
 
-  clearUsers = () => this.setState({ users: [], loading: false });
+  const clearUsers = () => {
+    /** 清空用户内容 */
+    setUsers([]);
+    setLoading(false);
+  };
 
-  setAlert = ({ msg, type }) => {
-    this.setState({ alert: { msg, type } });
-    // 取消显示提示
-    setTimeout(() => {
-      this.setState({ alert: null });
-    }, 5000);
-  }
-  render() {
-    const { users, user, repos, loading, alert } = this.state;
-    return (
+  // const showAlert = ({ msg, type }) => {
+  //   setAlert({ msg, type });
+  //   // 取消显示提示
+  //   setTimeout(() => {
+  //     setAlert(null);
+  //   }, 5000);
+  // }
+
+  // const { users, user, repos, loading, alert } = this.state;
+  return (
+    <AlertState>
       <BrowserRouter>
         <div className="App">
           <Navbar />
           <div className="container">
-            <Alert alert={alert} />
+            <Alert />
             <Switch>
               <Route exact path="/" render={props => (<Fragment>
-                <Search searchUsers={this.searchUsers} clearUsers={this.clearUsers} setAlert={this.setAlert}
+                <Search searchUsers={searchUsers} clearUsers={clearUsers}
                   showClaer={users.length === 0 ? false : true} />
                 <Users users={users} loading={loading}></Users>
               </Fragment>)} />
               <Route exact path="/about" component={About}></Route>
               <Route exact path="/user/:login" render={props => (
-                <User {...props} user={user} loadUser={this.loadUser} 
-                repos={repos} loadUserRepos={this.loadUserRepos} />
+                <User {...props} user={user} loadUser={loadUser}
+                  repos={repos} loadUserRepos={loadUserRepos} loading={loading} />
               )}></Route>
             </Switch>
           </div>
         </div>
       </BrowserRouter>
-    )
-  }
+    </AlertState>
+  )
+
 }
+
+
+export default App;
